@@ -1,12 +1,12 @@
 #!/usr/bin/env python3
 import os
 import logging
-import anthropic
+import requests
 from telegram import Update
 from telegram.ext import Application, MessageHandler, CommandHandler, filters, ContextTypes
 
 TELEGRAM_TOKEN = "8647674072:AAEZ9Vbb2gG-NdjY8JCLRYC1vVYimwIVTmQ"
-ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
+
 CREATIVE_PROMPT = """أنت خبير تسويق متخصص في إعلانات ecommerce للسوق الخليجي السعودي.
 مهمتك تكتب:
 1. Script UGC بالسعودي (hook + problem + solution + proof + CTA)
@@ -49,23 +49,52 @@ def detect_agent(text: str) -> str:
         return "research"
     return "creative"
 
-async def call_claude(system_prompt: str, user_message: str) -> str:
+def call_claude_api(system_prompt: str, user_message: str) -> str:
+    """يستدعي Claude API مباشرة بدون library"""
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+
+    if not api_key:
+        # طباعة كل الـ environment variables للتشخيص
+        env_keys = [k for k in os.environ.keys()]
+        return f"❌ API Key مو موجود\nكل الـ vars: {env_keys[:20]}"
+
+    headers = {
+        "x-api-key": api_key,
+        "anthropic-version": "2023-06-01",
+        "content-type": "application/json"
+    }
+
+    data = {
+        "model": "claude-sonnet-4-20250514",
+        "max_tokens": 4000,
+        "system": system_prompt,
+        "messages": [{"role": "user", "content": user_message}]
+    }
+
     try:
-        client = anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
-        message = client.messages.create(
-            model="claude-sonnet-4-20250514",
-            max_tokens=4000,
-            system=system_prompt,
-            messages=[{"role": "user", "content": user_message}]
+        response = requests.post(
+            "https://api.anthropic.com/v1/messages",
+            headers=headers,
+            json=data,
+            timeout=60
         )
-        return message.content[0].text
+
+        if response.status_code == 200:
+            return response.json()["content"][0]["text"]
+        else:
+            return f"❌ API Error {response.status_code}: {response.text[:500]}"
+
     except Exception as e:
-        return f"خطأ: {str(e)}"
+        return f"❌ Request Error: {str(e)}"
 
 async def start(update: Update, context: ContextTypes.DEFAULT_TYPE):
-    welcome = """🤖 Gulf Ecom Bot — 3 Agents
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    status = f"✅ موجود ({api_key[:10]}...)" if api_key else "❌ مو موجود"
+    welcome = f"""🤖 Gulf Ecom Bot — 3 Agents
 
-أهلاً! عندي 3 خبراء:
+API Key: {status}
+
+عندي 3 خبراء:
 🎨 Creative — اكتب لي script لمنتج X
 📄 Landing Page — ابني لي landing page
 🔍 Research — ابحث منتجات رابحة
@@ -83,7 +112,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         system, label = LANDING_PAGE_PROMPT, "📄 Landing Page Agent"
     else:
         system, label = RESEARCH_PROMPT, "🔍 Research Agent"
-    response = await call_claude(system, user_message)
+    response = call_claude_api(system, user_message)
     await waiting_msg.delete()
     full = f"{label}\n{'─'*30}\n\n{response}"
     chunks = [full[i:i+4000] for i in range(0, len(full), 4000)]
@@ -95,7 +124,8 @@ async def error_handler(update: Update, context: ContextTypes.DEFAULT_TYPE):
 
 def main():
     logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.INFO)
-    print("🤖 Gulf Ecom Bot starting...")
+    api_key = os.environ.get("ANTHROPIC_API_KEY", "")
+    print(f"🤖 Starting... API Key: {'OK-' + api_key[:10] if api_key else 'MISSING'}")
     app = Application.builder().token(TELEGRAM_TOKEN).build()
     app.add_handler(CommandHandler("start", start))
     app.add_handler(MessageHandler(filters.TEXT & ~filters.COMMAND, handle_message))
