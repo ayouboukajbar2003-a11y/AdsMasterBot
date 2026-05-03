@@ -6,7 +6,7 @@ from telegram import Update
 from telegram.ext import Application, MessageHandler, CommandHandler, filters, ContextTypes
 
 TELEGRAM_TOKEN = "8647674072:AAEZ9Vbb2gG-NdjY8JCLRYC1vVYimwIVTmQ"
-ANTHROPIC_API_KEY = "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"
+ANTHROPIC_API_KEY = "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"
 CREATIVE_PROMPT = """أنت خبير تسويق متخصص في إعلانات ecommerce للسوق الخليجي السعودي.
 مهمتك تكتب:
 1. Script UGC بالسعودي (hook + problem + solution + proof + CTA)
