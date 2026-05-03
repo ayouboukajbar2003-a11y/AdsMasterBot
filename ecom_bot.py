@@ -14,7 +14,7 @@ from telegram.ext import Application, MessageHandler, CommandHandler, filters, C
 
 # ============ CONFIG ============
 TELEGRAM_TOKEN = "8647674072:AAEZ9Vbb2gG-NdjY8JCLRYC1vVYimwIVTmQ"
-ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")  # ضع مفتاحك هنا
+ANTHROPIC_API_KEY = os.getenv("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", "")  # ضع مفتاحك هنا
 
 # ============ AGENTS PROMPTS ============
 
